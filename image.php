@@ -25,8 +25,11 @@
 * $Id$
 */
 
-include_once("connection.php");  // defines datashot_connect(), returns false or a PDO handle.
-include_once("imagelib.php"); // supporting image functions
+// Defines datashot_connect(), returns false or a simple database abstraction 
+// which can contain an OCI8 or PDO handle.
+include_once("connection.php");
+// Contains supporting image delivery functions.  
+include_once("imagelib.php"); 
 
 define('DEFAULT_FILE', "/opt/glassfish/defaultimage.jpg");
 define('BROKEN_IMAGE',"/opt/glassfish/images/brokenimage.jpg");
@@ -88,16 +91,31 @@ $connection = datashot_connect();
 if ($connection) { 
     // Look up the image filename, path, and templateid
     $sql = "SELECT imageid, filename, path, templateid FROM Image i WHERE i.imageId = :imageid ";
-    $statement = $connection->prepare($sql);
-    $statement->bindParam(":imageid",$imageid);
-    $statement->execute();
-    if ($row = $statement->fetch(PDO::FETCH_NUM)) { 
-    	$filename = $row[1];
-    	$path = $row[2];
-    	$templateid = $row[3];
-    } else { 
-        deliverErrorMessageImage("ImageID [$imageid] not found.");
-        die;
+    if ($connection->type==TYPE_ORACLE) { 
+    	$statement = oci_parse($connection->oracle_connection, $sql);
+    	oci_bind_by_name($statement,":imageid",$imageid);
+    	oci_execute($statement);
+    	if ($row = oci_fetch_array($statement,OCI_NUM)) {
+    		$filename = $row[1];
+    		$path = $row[2];
+    		$templateid = $row[3];
+    	} else {
+    		deliverErrorMessageImage("ImageID [$imageid] not found.");
+    		die;
+    	}    	
+    	oci_free_statement($statement);
+    } elseif ($connection->type==TYPE_PDO) { 
+    	$statement = $connection->dbo_connection->prepare($sql);
+	    $statement->bindParam(":imageid",$imageid);
+    	$statement->execute();
+    	if ($row = $statement->fetch(PDO::FETCH_NUM)) { 
+    		$filename = $row[1];
+	    	$path = $row[2];
+    		$templateid = $row[3];
+    	} else { 
+        	deliverErrorMessageImage("ImageID [$imageid] not found.");
+    	    die;
+	    }
     }
     
     // Location of the image file on the local filesystem 
@@ -242,27 +260,51 @@ if ($connection) {
 			break;
 		default:
 			// lookup the coordinates of of the templated region
-			$statement = $connection->prepare($sql);
-			$statement->bindParam(":templateid", $templateid);
-			$statement->execute();
-			if ($row = $statement->fetch(PDO::FETCH_NUM)) {
-				$imageSizeX = $row[2];
-				$imageSizeY = $row[3];
-				if ($region=="Full") {
-					$positionX = 0;
-					$positionY = 0;
-					$sizeX = $imageSizeX;
-					$sizeY = $imageSizeY;
+			if ($connection->type==TYPE_ORACLE) {
+				$statement = oci_parse($connection->oracle_connection, $sql);
+				$oci_bind_by_name($statement,":templateid", $templateid);
+				oci_execute($statement);
+				if ($row = oci_fetch_arrya($statement, OCI_NUM)) {
+					$imageSizeX = $row[2];
+					$imageSizeY = $row[3];
+					if ($region=="Full") {
+						$positionX = 0;
+						$positionY = 0;
+						$sizeX = $imageSizeX;
+						$sizeY = $imageSizeY;
+					} else {
+						$positionX = $row[4];
+						$positionY = $row[5];
+						$sizeX = $row[6];
+						$sizeY = $row[7];
+					}
 				} else {
-					$positionX = $row[4];
-					$positionY = $row[5];
-					$sizeX = $row[6];
-					$sizeY = $row[7];
+					deliverErrorMessageImage("Template [$templateid] not found.");
+					die;
+				}				
+			} elseif ($connection->type==TYPE_PDO) {
+				$statement = $connection->dbo_connection->prepare($sql);
+				$statement->bindParam(":templateid", $templateid);
+				$statement->execute();
+				if ($row = $statement->fetch(PDO::FETCH_NUM)) {
+					$imageSizeX = $row[2];
+					$imageSizeY = $row[3];
+					if ($region=="Full") {
+						$positionX = 0;
+						$positionY = 0;
+						$sizeX = $imageSizeX;
+						$sizeY = $imageSizeY;
+					} else {
+						$positionX = $row[4];
+						$positionY = $row[5];
+						$sizeX = $row[6];
+						$sizeY = $row[7];
+					}
+				} else {
+					deliverErrorMessageImage("Template [$templateid] not found.");
+					die;
 				}
-			} else {
-				deliverErrorMessageImage("Template [$templateid] not found.");
-				die;
-			}
+			} 
 			break;
 	} // end case
 	
