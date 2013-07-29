@@ -118,6 +118,11 @@ if ($connection) {
 	    }
     }
     
+    if (DIRECTORY_SEPARATOR=="/") {
+        $path = str_replace("\\", "/", $path);
+    } else {
+        $path = str_replace("/", "\\", $path);
+    }
     // Location of the image file on the local filesystem 
     $systemfilename = IMAGEROOT . "$path/$filename";
     // Name of the file to be provided to the client in response to a download request.
