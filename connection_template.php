@@ -25,6 +25,10 @@ function datashot_connect() {
         $result->type = TYPE_ORACLE;
         $result->oracle_connection = $dbh;
         $result->dbo_connection = null;
+        } else {
+           // oci_pconnect returns false on error.
+           $result = FALSE;
+        }
         */
         // for MariaDB (or any other PDO supported database):
         $dbh = new PDO('mysql:host=localhost;dbname=test', "username", "password", 
