@@ -83,6 +83,11 @@ function deliverErrorMessageImage($message) {
 	deliverAsJpeg($image);
 } 
 
+function deliverErrorMessageImageBig($message) {
+	$image = createErrorMessageImage($message,5000,5000);
+	deliverAsJpeg($image);
+} 
+
 /**
  *  Deliver the provided image, with a content-type header to the browser 
  *  then destroy the image.
