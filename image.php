@@ -64,7 +64,7 @@ $width  = preg_replace('[^0-9]', '', $_GET['cwidth']);  // width of a cropped fr
 $height  = preg_replace('[^0-9]', '', $_GET['height']);  // height of a cropped from the image or a region
 
 if ($imageid==null) { 
-    deliverErrorMessageImage("No image specified.");
+    deliverErrorMessageImageBig("No image specified.");
     die;
 }
 
